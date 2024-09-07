@@ -1,0 +1,146 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class Main {
+
+    // JDBC URL, username, and password of MySQL server
+    static final String JDBC_URL = "jdbc:mysql://localhost:3306/bankDB";
+    static final String JDBC_USER = "root"; // Update with your MySQL username
+    static final String JDBC_PASSWORD = "password"; // Update with your MySQL password
+
+    public static void main(String[] args) {
+        try (Connection conn = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD)) {
+            boolean condition = true;
+            Scanner sc = new Scanner(System.in);
+
+            while (condition) {
+                System.out.println("Banking Menu: ");
+                System.out.println("Select any one option from below. ");
+                System.out.println("1) Add Customer");
+                System.out.println("2) Change Customer Name");
+                System.out.println("3) Check Account Balance");
+                System.out.println("4) Update Account Balance");
+                System.out.println("5) Summary of All Accounts");
+                System.out.println("6) Quit");
+
+                System.out.print("Enter your option: ");
+                int option = sc.nextInt();
+                sc.nextLine(); // consume the newline character
+
+                switch (option) {
+                    case 1: // Add Customer
+                        System.out.println("\nAdd Customer Menu");
+                        System.out.print("Enter Customer Name: ");
+                        String name = sc.nextLine();
+                        System.out.print("Enter Opening Balance Amount: ");
+                        double balance = sc.nextDouble();
+
+                        String insertCustomerSQL = "INSERT INTO customers (account_name, account_balance) VALUES (?, ?)";
+                        try (PreparedStatement pstmt = conn.prepareStatement(insertCustomerSQL, Statement.RETURN_GENERATED_KEYS)) {
+                            pstmt.setString(1, name);
+                            pstmt.setDouble(2, balance);
+                            pstmt.executeUpdate();
+
+                            ResultSet rs = pstmt.getGeneratedKeys();
+                            if (rs.next()) {
+                                int accountNumber = rs.getInt(1);
+                                System.out.println("Account created successfully.");
+                                System.out.println("Account Number: " + accountNumber);
+                                System.out.println("Account Name: " + name);
+                                System.out.println("Account Balance: " + balance + " Rs");
+                            }
+                        }
+                        break;
+
+                    case 2: // Change Customer Name
+                        System.out.println("\nChange Customer Name Menu");
+                        System.out.print("Enter your Account Number: ");
+                        int accountNumberToUpdate = sc.nextInt();
+                        sc.nextLine(); // consume the newline character
+                        System.out.print("Enter the new name: ");
+                        String newName = sc.nextLine();
+
+                        String updateNameSQL = "UPDATE customers SET account_name = ? WHERE account_number = ?";
+                        try (PreparedStatement pstmt = conn.prepareStatement(updateNameSQL)) {
+                            pstmt.setString(1, newName);
+                            pstmt.setInt(2, accountNumberToUpdate);
+                            int rowsAffected = pstmt.executeUpdate();
+
+                            if (rowsAffected > 0) {
+                                System.out.println("Name is successfully updated.");
+                            } else {
+                                System.out.println("Account does not exist.");
+                            }
+                        }
+                        break;
+
+                    case 3: // Check Account Balance
+                        System.out.println("\nCheck Account Balance Menu");
+                        System.out.print("Enter your Account Number: ");
+                        int accountNumberToCheck = sc.nextInt();
+
+                        String checkBalanceSQL = "SELECT account_name, account_balance FROM customers WHERE account_number = ?";
+                        try (PreparedStatement pstmt = conn.prepareStatement(checkBalanceSQL)) {
+                            pstmt.setInt(1, accountNumberToCheck);
+                            ResultSet rs = pstmt.executeQuery();
+
+                            if (rs.next()) {
+                                String accountName = rs.getString("account_name");
+                                double accountBalance = rs.getDouble("account_balance");
+                                System.out.println(accountName + " your balance is " + accountBalance + " Rs.");
+                            } else {
+                                System.out.println("Account does not exist.");
+                            }
+                        }
+                        break;
+
+                    case 4: // Update Account Balance
+                        System.out.println("\nUpdate Account Balance Menu");
+                        System.out.print("Enter your Account Number: ");
+                        int accountNumberToDeposit = sc.nextInt();
+                        System.out.print("Enter the amount to be deposited: ");
+                        double depositAmount = sc.nextDouble();
+
+                        String updateBalanceSQL = "UPDATE customers SET account_balance = account_balance + ? WHERE account_number = ?";
+                        try (PreparedStatement pstmt = conn.prepareStatement(updateBalanceSQL)) {
+                            pstmt.setDouble(1, depositAmount);
+                            pstmt.setInt(2, accountNumberToDeposit);
+                            int rowsAffected = pstmt.executeUpdate();
+
+                            if (rowsAffected > 0) {
+                                System.out.println("Your updated balance is: " + depositAmount + " Rs.");
+                            } else {
+                                System.out.println("Account does not exist.");
+                            }
+                        }
+                        break;
+
+                    case 5: // Summary of All Accounts
+                        System.out.println("\nSummary of All Accounts");
+                        String summarySQL = "SELECT account_number, account_name, account_balance FROM customers";
+                        try (Statement stmt = conn.createStatement()) {
+                            ResultSet rs = stmt.executeQuery(summarySQL);
+
+                            while (rs.next()) {
+                                int accNo = rs.getInt("account_number");
+                                String accName = rs.getString("account_name");
+                                double accBalance = rs.getDouble("account_balance");
+                                System.out.println("Account Number: " + accNo + ", Name: " + accName + ", Balance: " + accBalance + " Rs.");
+                            }
+                        }
+                        break;
+
+                    case 6: // Quit
+                        System.out.println("Terminating...");
+                        condition = false;
+                        break;
+
+                    default:
+                        System.out.println("\nInvalid input.");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
